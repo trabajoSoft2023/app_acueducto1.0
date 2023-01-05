@@ -1,29 +1,30 @@
+import 'package:app_acueducto/src/features/authentication/presentation/account/account_screen.dart';
+import 'package:app_acueducto/src/home.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../src/features/authentication/presentation/sign_in/email_password_screen.dart';
+//import '../src/features/authentication/presentation/account/account_screen.dart';
+import '../src/features/authentication/presentation/sign_in/email_password_sign_in_screen.dart';
 import '../src/features/authentication/presentation/sign_in/email_password_sign_in_state.dart';
-import '../src/home.dart';
 
-enum AppRouter { account, signIn, home }
+enum AppRouter { home, account, signIn }
 
-final GoRouter _router = GoRouter(
-  routes: <RouteBase>[
-    GoRoute(
+final goRouter =
+    GoRouter(initialLocation: '/', debugLogDiagnostics: false, routes: [
+  GoRoute(
       path: '/',
-      builder: (BuildContext context, GoRouterState state) {
-        return const EmailPasswordSignInScreen(
-          formType: EmailPasswordSignInFormType.signIn,
-        );
-      },
-      routes: <RouteBase>[
+      name: AppRouter.home.name,
+      builder: (context, state) => const EmailPasswordSignInScreen(
+          formType: EmailPasswordSignInFormType.signIn),
+      routes: [
         GoRoute(
           path: 'home',
-          builder: (BuildContext context, GoRouterState state) {
-            return const HomePage();
-          },
-        ),
-      ],
-    ),
-  ],
-);
+          name: AppRouter.account.name,
+          pageBuilder: (context, state) => MaterialPage(
+            key: state.pageKey,
+            fullscreenDialog: true,
+            child: const HomePage(),
+          ),
+        )
+      ]),
+]);

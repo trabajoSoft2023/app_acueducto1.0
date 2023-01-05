@@ -1,4 +1,6 @@
+import 'package:app_acueducto/src/features/authentication/data/fake_auth_repository.dart';
 import 'package:app_acueducto/src/localization/string_harcoded.dart';
+import 'package:app_acueducto/src/utils/async_value_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,6 +17,9 @@ class AccountScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AsyncValue<void>>(accountScreenControllerProvider,
+        (_, state) => state.showAlertDialogOnError(context));
+    final state = ref.watch(accountScreenControllerProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text('Account'.hardcoded),
@@ -24,7 +29,7 @@ class AccountScreen extends ConsumerWidget {
             onPressed: () async {
               // Obtener la navegador antes de la brecha asíncrona(femenino)
 
-              final navigator = Navigator.of(context);
+              //final navigator = Navigator.of(context);
               final logout = await showAlertDialog(
                 context: context,
                 title: 'Are you sure?'.hardcoded,
@@ -32,12 +37,9 @@ class AccountScreen extends ConsumerWidget {
                 defaultActionText: 'Logout'.hardcoded,
               );
               if (logout == true) {
-                final success = await ref
-                    .read(accountScreenControllerProvider.notifier)
-                    .signOut();
-                if (success) {
-                  Navigator.of(context).pop();
-                }
+                ref.read(accountScreenControllerProvider.notifier).signOut();
+                // if (success) {
+                // Navigator.of(context).pop();
               }
             },
           ),
@@ -52,14 +54,15 @@ class AccountScreen extends ConsumerWidget {
 }
 
 /// Simple user data table showing the uid and email
-class UserDataTable extends StatelessWidget {
+class UserDataTable extends ConsumerWidget {
   const UserDataTable({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final style = Theme.of(context).textTheme.subtitle2!;
-    // TODO: get user from auth repository
-    const user = AppUser(uid: '123', email: 'test@test.com');
+
+    final user = ref.watch(authStateChangeProvider).value;
+    //
     return DataTable(
       columns: [
         DataColumn(
@@ -78,12 +81,12 @@ class UserDataTable extends StatelessWidget {
       rows: [
         _makeDataRow(
           'uid'.hardcoded,
-          user.uid,
+          user?.uid ?? '',
           style,
         ),
         _makeDataRow(
           'email'.hardcoded,
-          user.email ?? '',
+          user?.email ?? '',
           style,
         ),
       ],

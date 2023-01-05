@@ -1,39 +1,40 @@
+import 'package:app_acueducto/src/features/authentication/presentation/sign_in/email_password_sigin_controller.dart';
 import 'package:app_acueducto/src/features/authentication/presentation/sign_in/email_password_sign_in_state.dart';
 import 'package:app_acueducto/src/features/authentication/presentation/sign_in/string_validators.dart';
 import 'package:app_acueducto/src/localization/string_harcoded.dart';
+import 'package:app_acueducto/src/utils/async_value_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../constatnts/app_sizes.dart';
 import '../../../../widgets_commons.dart/custom_text_button.dart';
 import '../../../../widgets_commons.dart/primary_button.dart';
 import '../../../../widgets_commons.dart/responsive_scrollable.dart';
 
-/// Pantalla de inicio de sesión de correo electrónico y contraseña.
-
 class EmailPasswordSignInScreen extends StatelessWidget {
   const EmailPasswordSignInScreen({super.key, required this.formType});
   final EmailPasswordSignInFormType formType;
 
-// * Claves para probar usando find.byKey()
+  // * Keys for testing using find.byKey()
   static const emailKey = Key('email');
   static const passwordKey = Key('password');
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Sign In'.hardcoded)),
       body: EmailPasswordSignInContents(
         formType: formType,
-        onSignedIn: () => Navigator.of(context).pop(),
       ),
     );
   }
 }
 
-//Un widget para la autenticación de correo electrónico y contraseña, compatible con lo siguiente:
+///Un widget para la autenticación de correo electrónico y contraseña, compatible con lo siguiente:
 /// - iniciar sesión
 /// - registrarse (crear una cuenta)
-class EmailPasswordSignInContents extends StatefulWidget {
+class EmailPasswordSignInContents extends ConsumerStatefulWidget {
   const EmailPasswordSignInContents({
     super.key,
     this.onSignedIn,
@@ -44,12 +45,12 @@ class EmailPasswordSignInContents extends StatefulWidget {
   /// El tipo de formulario predeterminado a usar.
   final EmailPasswordSignInFormType formType;
   @override
-  State<EmailPasswordSignInContents> createState() =>
+  ConsumerState<EmailPasswordSignInContents> createState() =>
       _EmailPasswordSignInContentsState();
 }
 
 class _EmailPasswordSignInContentsState
-    extends State<EmailPasswordSignInContents> {
+    extends ConsumerState<EmailPasswordSignInContents> {
   final _formKey = GlobalKey<FormState>();
   final _node = FocusScopeNode();
   final _emailController = TextEditingController();
@@ -57,30 +58,32 @@ class _EmailPasswordSignInContentsState
 
   String get email => _emailController.text;
   String get password => _passwordController.text;
+
   // variable local utilizada para aplicar AutovalidateMode.onUserInteraction y mostrar
   // sugerencias de error solo cuando se ha enviado el formulario
+  // https://codewithandrea.com/articles/flutter-text-field-form-validation/
   var _submitted = false;
 
-// variable local que representa el tipo de formulario y el estado de carga
-  late var _state =
-      EmailPasswordSignInState(formType: widget.formType, isLoading: false);
   @override
   void dispose() {
-    // * Los TextEditingControllers deben desecharse siempre
+// * Los TextEditingControllers deben desecharse siempre
     _node.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+//toda la logica de validacion esta dentro de este metdodo submit
   Future<void> _submit(EmailPasswordSignInState state) async {
     setState(() => _submitted = true);
-
-// solo envíe el formulario si pasa la validación
-
+    // solo envíe el formulario si pasa la validación
     if (_formKey.currentState!.validate()) {
-      // TODO: Authentication logic
-      widget.onSignedIn?.call();
+      final controller = ref.read(
+          emailPasswordSignInControllerProvider(widget.formType).notifier);
+      final success = await controller.submit(email, password);
+      if (success) {
+        widget.onSignedIn?.call();
+      }
     }
   }
 
@@ -100,13 +103,22 @@ class _EmailPasswordSignInContentsState
 
   void _updateFormType(EmailPasswordSignInFormType formType) {
 // * Alternar entre formulario de registro e inicio de sesión
-    setState(() => _state = _state.copyWith(formType: formType));
+    ref
+        .read(emailPasswordSignInControllerProvider(widget.formType).notifier)
+        .updateFormType(formType);
     // * Limpiar el campo de contraseña al hacerlo
     _passwordController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue>(
+      emailPasswordSignInControllerProvider(widget.formType)
+          .select((state) => state.value),
+      (_, state) => state.showAlertDialogOnError(context),
+    );
+    final state =
+        ref.watch(emailPasswordSignInControllerProvider(widget.formType));
     return ResponsiveScrollableCard(
       child: FocusScope(
         node: _node,
@@ -123,16 +135,16 @@ class _EmailPasswordSignInContentsState
                 decoration: InputDecoration(
                   labelText: 'Email'.hardcoded,
                   hintText: 'test@test.com'.hardcoded,
-                  enabled: !_state.isLoading,
+                  enabled: !state.isLoading,
                 ),
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 validator: (email) =>
-                    !_submitted ? null : _state.emailErrorText(email ?? ''),
+                    !_submitted ? null : state.emailErrorText(email ?? ''),
                 autocorrect: false,
                 textInputAction: TextInputAction.next,
                 keyboardType: TextInputType.emailAddress,
                 keyboardAppearance: Brightness.light,
-                onEditingComplete: () => _emailEditingComplete(_state),
+                onEditingComplete: () => _emailEditingComplete(state),
                 inputFormatters: <TextInputFormatter>[
                   ValidatorInputFormatter(
                       editingValidator: EmailEditingRegexValidator()),
@@ -144,31 +156,31 @@ class _EmailPasswordSignInContentsState
                 key: EmailPasswordSignInScreen.passwordKey,
                 controller: _passwordController,
                 decoration: InputDecoration(
-                  labelText: _state.passwordLabelText,
-                  enabled: !_state.isLoading,
+                  labelText: state.passwordLabelText,
+                  enabled: !state.isLoading,
                 ),
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 validator: (password) => !_submitted
                     ? null
-                    : _state.passwordErrorText(password ?? ''),
+                    : state.passwordErrorText(password ?? ''),
                 obscureText: true,
                 autocorrect: false,
                 textInputAction: TextInputAction.done,
                 keyboardAppearance: Brightness.light,
-                onEditingComplete: () => _passwordEditingComplete(_state),
+                onEditingComplete: () => _passwordEditingComplete(state),
               ),
               gapH8,
               PrimaryButton(
-                text: _state.primaryButtonText,
-                isLoading: _state.isLoading,
-                onPressed: _state.isLoading ? null : () => _submit(_state),
+                text: state.primaryButtonText,
+                isLoading: state.isLoading,
+                onPressed: state.isLoading ? null : () => _submit(state),
               ),
               gapH8,
               CustomTextButton(
-                text: _state.secondaryButtonText,
-                onPressed: _state.isLoading
+                text: state.secondaryButtonText,
+                onPressed: state.isLoading
                     ? null
-                    : () => _updateFormType(_state.secondaryActionFormType),
+                    : () => _updateFormType(state.secondaryActionFormType),
               ),
             ],
           ),

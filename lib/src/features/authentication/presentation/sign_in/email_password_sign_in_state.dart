@@ -1,6 +1,8 @@
 //import 'dart:html';
 
 import 'package:app_acueducto/src/localization/string_harcoded.dart';
+import 'package:riverpod/riverpod.dart';
+//import 'package:riverpod/src/common.dart';
 
 import 'string_validators.dart';
 
@@ -20,17 +22,21 @@ mixin EmailAndPasswordValidators {
 class EmailPasswordSignInState with EmailAndPasswordValidators {
   EmailPasswordSignInState({
     this.formType = EmailPasswordSignInFormType.signIn,
-    this.isLoading = false,
+    this.value = const AsyncValue.data(null),
   });
+
   final EmailPasswordSignInFormType formType;
-  final bool isLoading;
+  final AsyncValue<void> value;
+
+  bool get isLoading => value.isLoading;
+
   EmailPasswordSignInState copyWith({
     EmailPasswordSignInFormType? formType,
-    bool? isLoading,
+    AsyncValue<void>? value,
   }) {
     return EmailPasswordSignInState(
       formType: formType ?? this.formType,
-      isLoading: isLoading ?? this.isLoading,
+      value: value ?? this.value,
     );
   }
 
@@ -74,7 +80,7 @@ extension EmailPasswordSignInStateX on EmailPasswordSignInState {
 
   String get secondaryButtonText {
     if (formType == EmailPasswordSignInFormType.register) {
-      return 'Have an account? Sign in'.hardcoded;
+      return 'Ya tiene una cuenta? Inicie sesion'.hardcoded;
     } else {
       return 'Necesito una cuenta? Regístrese'.hardcoded;
     }
